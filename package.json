@@ -1,5 +1,5 @@
 {
-  "name": "codemirror-cjk-word-motion",
+  "name": "@onk/codemirror-cjk-word-motion",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
