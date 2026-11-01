@@ -2,7 +2,10 @@
   "name": "@onk/codemirror-cjk-word-motion",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "exports": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run"
