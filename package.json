@@ -8,7 +8,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepare": "pnpm run build"
   },
   "keywords": [],
   "author": "",
