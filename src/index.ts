@@ -1,4 +1,5 @@
-import { EditorSelection, type StateCommand, type Text } from '@codemirror/state';
+import { EditorSelection, type Extension, Prec, type StateCommand, type Text } from '@codemirror/state';
+import { keymap } from '@codemirror/view';
 
 /**
  * CodeMirror's group commands (cursorGroupLeft etc.) assume a language that separates words with
@@ -122,3 +123,19 @@ export const selectWordLeft: StateCommand = (target) => moveByWord(target, false
 export const selectWordRight: StateCommand = (target) => moveByWord(target, true, true);
 export const deleteWordBackward: StateCommand = (target) => deleteByWord(target, false);
 export const deleteWordForward: StateCommand = (target) => deleteByWord(target, true);
+
+/**
+ * Binds the commands to the keys defaultKeymap uses for its group commands. Prec.high makes them
+ * run first wherever this is placed, as defaultKeymap's group commands would otherwise handle the
+ * keys before them.
+ */
+export function cjkWordMotion(): Extension {
+  return Prec.high(
+    keymap.of([
+      { key: 'Mod-ArrowLeft', mac: 'Alt-ArrowLeft', run: cursorWordLeft, shift: selectWordLeft, preventDefault: true },
+      { key: 'Mod-ArrowRight', mac: 'Alt-ArrowRight', run: cursorWordRight, shift: selectWordRight, preventDefault: true },
+      { key: 'Mod-Backspace', mac: 'Alt-Backspace', run: deleteWordBackward, preventDefault: true },
+      { key: 'Mod-Delete', mac: 'Alt-Delete', run: deleteWordForward, preventDefault: true },
+    ]),
+  );
+}

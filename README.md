@@ -27,41 +27,31 @@ npm install @onk/codemirror-cjk-word-motion
 ## Usage
 
 ```ts
-import { basicSetup } from 'codemirror';
-import { Prec } from '@codemirror/state';
-import { EditorView, keymap } from '@codemirror/view';
-import {
-  cursorWordLeft,
-  cursorWordRight,
-  deleteWordBackward,
-  deleteWordForward,
-  selectWordLeft,
-  selectWordRight,
-} from '@onk/codemirror-cjk-word-motion';
+import { basicSetup, EditorView } from 'codemirror';
+import { cjkWordMotion } from '@onk/codemirror-cjk-word-motion';
 
-const cjkWordMotion = Prec.high(
-  keymap.of([
-    { key: 'Mod-ArrowLeft', mac: 'Alt-ArrowLeft', run: cursorWordLeft, shift: selectWordLeft, preventDefault: true },
-    { key: 'Mod-ArrowRight', mac: 'Alt-ArrowRight', run: cursorWordRight, shift: selectWordRight, preventDefault: true },
-    { key: 'Mod-Backspace', mac: 'Alt-Backspace', run: deleteWordBackward, preventDefault: true },
-    { key: 'Mod-Delete', mac: 'Alt-Delete', run: deleteWordForward, preventDefault: true },
-  ]),
-);
-
-new EditorView({ parent: document.body, extensions: [basicSetup, cjkWordMotion] });
+new EditorView({ parent: document.body, extensions: [basicSetup, cjkWordMotion()] });
 ```
 
-`Prec.high` makes these bindings run before `defaultKeymap` (included in `basicSetup`).
-
-Where `Intl.Segmenter` is unavailable, the commands return `false` and leave the key to the next keymap, so `defaultKeymap`'s group commands still work.
-
 ## API
+
+### `cjkWordMotion()`
+
+Returns an extension that binds the commands below to these keys. It takes them over from the group commands in `defaultKeymap` (included in `basicSetup`).
+
+- Ctrl+←/→ (Option+←/→ on macOS): `cursorWordLeft` / `cursorWordRight`
+- Shift+Ctrl+←/→ (Shift+Option+←/→ on macOS): `selectWordLeft` / `selectWordRight`
+- Ctrl+Backspace/Delete (Option+Backspace/Delete on macOS): `deleteWordBackward` / `deleteWordForward`
+
+### Commands
 
 | Command | Description |
 |---|---|
 | `cursorWordLeft` / `cursorWordRight` | Moves the cursor to the start of the previous word / the end of the next word. A selection is collapsed to its start / end. |
 | `selectWordLeft` / `selectWordRight` | Moves the head of the selection the same way, keeping its anchor. |
 | `deleteWordBackward` / `deleteWordForward` | Deletes up to the start of the previous word / the end of the next word, or the selection if any. |
+
+Where `Intl.Segmenter` is unavailable, the commands return `false` and leave the key to the next keymap, so `defaultKeymap`'s group commands still work.
 
 ## How it stops
 
