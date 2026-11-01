@@ -1,7 +1,7 @@
 {
   "name": "@onk/codemirror-cjk-word-motion",
   "version": "1.0.0",
-  "description": "",
+  "description": "CodeMirror commands to move and delete by word in CJK text",
   "exports": "./dist/index.js",
   "files": [
     "dist"
@@ -13,9 +13,16 @@
     "prepare": "pnpm run build",
     "prepublishOnly": "pnpm run check && pnpm run test"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "codemirror",
+    "japanese"
+  ],
+  "author": "onk",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/onk/codemirror-cjk-word-motion.git"
+  },
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
