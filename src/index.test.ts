@@ -9,6 +9,7 @@ import {
   deleteWordForward,
   selectWordLeft,
   selectWordRight,
+  wordAt,
   wordBoundary,
 } from './index.js';
 
@@ -136,6 +137,48 @@ describe('wordBoundary', () => {
     it('does not move', () => {
       testForward('foo|', 'foo|');
       testBackward('|foo', '|foo');
+    });
+  });
+});
+
+describe('wordAt', () => {
+  function test(from: string, to: string, bias: -1 | 1 = 1) {
+    const state = fromMarkedDoc(from);
+    const range = wordAt(state.doc, state.selection.main.head, bias)!;
+    expect(toMarkedDoc(state.update({ selection: range }).state)).toBe(to);
+  }
+
+  describe('when the position is within a unit', () => {
+    it('selects the word', () => {
+      test('日本語の文|章', '日本語の<文章|>');
+    });
+
+    it('selects consecutive punctuation at once', () => {
+      test('curiouser!|”', 'curiouser<!”|>');
+    });
+
+    it('selects the spaces', () => {
+      test('foo  | bar', 'foo<   |>bar');
+    });
+  });
+
+  describe('when the position is between units', () => {
+    it('selects the unit on the side of bias', () => {
+      test('日本語|の文章', '日本語<の|>文章', 1);
+      test('日本語|の文章', '<日本語|>の文章', -1);
+    });
+  });
+
+  describe('when the position is at the edge of a line', () => {
+    it('selects the unit within the line', () => {
+      test('foo\n|bar', 'foo\n<bar|>', -1);
+      test('foo|\nbar', '<foo|>\nbar', 1);
+    });
+  });
+
+  describe('when the line is empty', () => {
+    it('selects nothing', () => {
+      test('foo\n|\nbar', 'foo\n|\nbar');
     });
   });
 });
