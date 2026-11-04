@@ -136,6 +136,7 @@ export function cjkWordMotion(): Extension {
       { key: 'Mod-ArrowRight', mac: 'Alt-ArrowRight', run: cursorWordRight, shift: selectWordRight, preventDefault: true },
       { key: 'Mod-Backspace', mac: 'Alt-Backspace', run: deleteWordBackward, preventDefault: true },
       { key: 'Mod-Delete', mac: 'Alt-Delete', run: deleteWordForward, preventDefault: true },
+      { mac: 'Ctrl-Alt-h', run: deleteWordBackward },
     ]),
   );
 }
