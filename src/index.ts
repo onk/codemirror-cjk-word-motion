@@ -30,9 +30,30 @@ const segmenter = (() => {
 type Unit = { from: number; to: number; kind: 'word' | 'symbol' | 'space' | 'separator' };
 
 /**
- * Splits a line into units of motion. Intl.Segmenter splits symbols into single characters, but
- * Chrome's textarea skips "!!!" or "。」" at once, so consecutive symbols are merged into one unit.
+ * Returns the unit of motion that contains index i of the segmented line, or undefined when i is
+ * outside the line.
  *
+ * Intl.Segmenter splits symbols into single characters, but Chrome's textarea skips "!!!" or "。」"
+ * at once, so consecutive symbols are merged into one unit.
+ */
+function unitAt(segments: Intl.Segments, i: number): Unit | undefined {
+  const data = segments.containing(i);
+  if (!data) return undefined;
+  const kind = kindOf(data.segment);
+  let from = data.index;
+  let to = data.index + data.segment.length;
+  if (kind === 'symbol') {
+    for (let prev; (prev = segments.containing(from - 1)) && kindOf(prev.segment) === 'symbol'; ) {
+      from = prev.index;
+    }
+    for (let next; (next = segments.containing(to)) && kindOf(next.segment) === 'symbol'; ) {
+      to = next.index + next.segment.length;
+    }
+  }
+  return { from, to, kind };
+}
+
+/**
  * Whether a segment is a word is decided by its content, not by isWordLike. Firefox's
  * Intl.Segmenter returns isWordLike: false for some Japanese words (icu_segmenter before 2.3.0),
  * which would merge them with the symbols around them.
@@ -43,24 +64,14 @@ type Unit = { from: number; to: number; kind: 'word' | 'symbol' | 'space' | 'sep
  * separators or followed by symbols, the browsers are inconsistent, and this does not follow
  * them there.
  */
-function unitsOfLine(segmenter: Intl.Segmenter, text: string): Unit[] {
-  const units: Unit[] = [];
-  for (const { segment, index } of segmenter.segment(text)) {
-    const kind = /[\p{L}\p{N}]/u.test(segment)
-      ? 'word'
-      : /^[ \t\xa0]+$/.test(segment)
-        ? 'separator'
-        : /^\s+$/.test(segment)
-          ? 'space'
-          : 'symbol';
-    const last = units[units.length - 1];
-    if (kind === 'symbol' && last?.kind === 'symbol') {
-      last.to = index + segment.length;
-    } else {
-      units.push({ from: index, to: index + segment.length, kind });
-    }
-  }
-  return units;
+function kindOf(segment: string): Unit['kind'] {
+  return /[\p{L}\p{N}]/u.test(segment)
+    ? 'word'
+    : /^[ \t\xa0]+$/.test(segment)
+      ? 'separator'
+      : /^\s+$/.test(segment)
+        ? 'space'
+        : 'symbol';
 }
 
 /** Returns the position one word away from pos, or null when Intl.Segmenter is unavailable. */
@@ -75,12 +86,11 @@ export function wordBoundary(doc: Text, pos: number, forward: boolean): number |
     return forward ? Math.min(pos + 1, doc.length) : Math.max(pos - 1, 0);
   }
 
-  const units = unitsOfLine(segmenter, line.text);
-  const target = forward
-    ? units.find((unit) => unit.to > offset && unit.kind !== 'separator')
-    : units.reverse().find((unit) => unit.from < offset && unit.kind !== 'separator');
-  if (!target) return forward ? line.to : line.from;
-  return line.from + (forward ? target.to : target.from);
+  const segments = segmenter.segment(line.text);
+  let unit = unitAt(segments, forward ? offset : offset - 1);
+  while (unit?.kind === 'separator') unit = unitAt(segments, forward ? unit.to : unit.from - 1);
+  if (!unit) return forward ? line.to : line.from;
+  return line.from + (forward ? unit.to : unit.from);
 }
 
 /**
@@ -92,13 +102,11 @@ export function wordAt(doc: Text, pos: number, bias: -1 | 1): SelectionRange | n
   const line = doc.lineAt(pos);
   if (line.length === 0) return EditorSelection.cursor(pos);
   const offset = pos - line.from;
-  // At a line edge, the side toward the line break has no unit, and find() below would return
+  // At a line edge, the side toward the line break has no unit, and unitAt() below would return
   // undefined.
   if (offset === 0) bias = 1;
   else if (offset === line.length) bias = -1;
-  const unit = unitsOfLine(segmenter, line.text).find((unit) =>
-    bias < 0 ? unit.from < offset && offset <= unit.to : unit.from <= offset && offset < unit.to,
-  )!;
+  const unit = unitAt(segmenter.segment(line.text), bias < 0 ? offset - 1 : offset)!;
   return EditorSelection.undirectionalRange(line.from + unit.from, line.from + unit.to);
 }
 
