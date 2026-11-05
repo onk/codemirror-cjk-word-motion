@@ -44,6 +44,8 @@ Returns an extension that binds the commands below to these keys. It takes them 
 - Ctrl+Backspace/Delete (Option+Backspace/Delete on macOS): `deleteWordBackward` / `deleteWordForward`
 - Ctrl+Option+H on macOS: `deleteWordBackward`
 
+It also makes double-click select the word between the same boundaries as these commands.
+
 ### Commands
 
 | Command | Description |

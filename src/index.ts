@@ -1,5 +1,12 @@
-import { EditorSelection, type Extension, Prec, type StateCommand, type Text } from '@codemirror/state';
-import { keymap } from '@codemirror/view';
+import {
+  EditorSelection,
+  type Extension,
+  Prec,
+  type SelectionRange,
+  type StateCommand,
+  type Text,
+} from '@codemirror/state';
+import { EditorView, keymap, type MouseSelectionStyle } from '@codemirror/view';
 
 /**
  * CodeMirror's group commands (cursorGroupLeft etc.) assume a language that separates words with
@@ -76,6 +83,60 @@ export function wordBoundary(doc: Text, pos: number, forward: boolean): number |
   return line.from + (forward ? target.to : target.from);
 }
 
+/**
+ * Returns the unit of motion at pos, or null when Intl.Segmenter is unavailable. Between two units,
+ * bias picks the one before (-1) or after (1) pos.
+ */
+export function wordAt(doc: Text, pos: number, bias: -1 | 1): SelectionRange | null {
+  if (!segmenter) return null;
+  const line = doc.lineAt(pos);
+  if (line.length === 0) return EditorSelection.cursor(pos);
+  const offset = pos - line.from;
+  // At a line edge, the side toward the line break has no unit, and find() below would return
+  // undefined.
+  if (offset === 0) bias = 1;
+  else if (offset === line.length) bias = -1;
+  const unit = unitsOfLine(segmenter, line.text).find((unit) =>
+    bias < 0 ? unit.from < offset && offset <= unit.to : unit.from <= offset && offset < unit.to,
+  )!;
+  return EditorSelection.undirectionalRange(line.from + unit.from, line.from + unit.to);
+}
+
+/**
+ * Does what CodeMirror's basicMouseSelection does on double-click, with wordAt in place of
+ * groupAt.
+ */
+function wordMouseSelection(view: EditorView, event: MouseEvent): MouseSelectionStyle | null {
+  if (!segmenter || event.button !== 0 || event.detail !== 2) return null;
+  const posAt = (event: MouseEvent) =>
+    view.posAndSideAtCoords({ x: event.clientX, y: event.clientY }, false);
+  const rangeAt = ({ pos, assoc }: { pos: number; assoc: -1 | 1 }) =>
+    wordAt(view.state.doc, pos, assoc)!;
+  const start = posAt(event);
+  let startSel = view.state.selection;
+  return {
+    update(update) {
+      if (update.docChanged) {
+        start.pos = update.changes.mapPos(start.pos);
+        startSel = startSel.map(update.changes);
+      }
+    },
+    get(curEvent, extend, multiple) {
+      const cur = posAt(curEvent);
+      let range = rangeAt(cur);
+      if (start.pos !== cur.pos && !extend) {
+        const startRange = rangeAt(start);
+        const from = Math.min(startRange.from, range.from);
+        const to = Math.max(startRange.to, range.to);
+        range = from < range.from ? EditorSelection.range(from, to) : EditorSelection.range(to, from);
+      }
+      if (extend) return startSel.replaceRange(startSel.main.extend(range.from, range.to));
+      if (multiple) return startSel.addRange(range);
+      return EditorSelection.create([range]);
+    },
+  };
+}
+
 type CommandTarget = Parameters<StateCommand>[0];
 
 function moveByWord({ state, dispatch }: CommandTarget, forward: boolean, extend: boolean): boolean {
@@ -125,18 +186,22 @@ export const deleteWordBackward: StateCommand = (target) => deleteByWord(target,
 export const deleteWordForward: StateCommand = (target) => deleteByWord(target, true);
 
 /**
- * Binds the commands to the keys defaultKeymap uses for its group commands. Prec.high makes them
- * run first wherever this is placed, as defaultKeymap's group commands would otherwise handle the
- * keys before them.
+ * Binds the commands to the keys defaultKeymap uses for its group commands, and selects by word on
+ * double-click. Prec.high makes the keys run first wherever this is placed, as defaultKeymap's
+ * group commands would otherwise handle them before. Prec.lowest leaves the double-click to any
+ * other mouseSelectionStyle such as rectangularSelection, wherever this is placed.
  */
 export function cjkWordMotion(): Extension {
-  return Prec.high(
-    keymap.of([
-      { key: 'Mod-ArrowLeft', mac: 'Alt-ArrowLeft', run: cursorWordLeft, shift: selectWordLeft, preventDefault: true },
-      { key: 'Mod-ArrowRight', mac: 'Alt-ArrowRight', run: cursorWordRight, shift: selectWordRight, preventDefault: true },
-      { key: 'Mod-Backspace', mac: 'Alt-Backspace', run: deleteWordBackward, preventDefault: true },
-      { key: 'Mod-Delete', mac: 'Alt-Delete', run: deleteWordForward, preventDefault: true },
-      { mac: 'Ctrl-Alt-h', run: deleteWordBackward },
-    ]),
-  );
+  return [
+    Prec.high(
+      keymap.of([
+        { key: 'Mod-ArrowLeft', mac: 'Alt-ArrowLeft', run: cursorWordLeft, shift: selectWordLeft, preventDefault: true },
+        { key: 'Mod-ArrowRight', mac: 'Alt-ArrowRight', run: cursorWordRight, shift: selectWordRight, preventDefault: true },
+        { key: 'Mod-Backspace', mac: 'Alt-Backspace', run: deleteWordBackward, preventDefault: true },
+        { key: 'Mod-Delete', mac: 'Alt-Delete', run: deleteWordForward, preventDefault: true },
+        { mac: 'Ctrl-Alt-h', run: deleteWordBackward },
+      ]),
+    ),
+    Prec.lowest(EditorView.mouseSelectionStyle.of(wordMouseSelection)),
+  ];
 }
