@@ -42,6 +42,7 @@ Returns an extension that binds the commands below to these keys. It takes them 
 - Ctrl+←/→ (Option+←/→ on macOS): `cursorWordLeft` / `cursorWordRight`
 - Shift+Ctrl+←/→ (Shift+Option+←/→ on macOS): `selectWordLeft` / `selectWordRight`
 - Ctrl+Backspace/Delete (Option+Backspace/Delete on macOS): `deleteWordBackward` / `deleteWordForward`
+- Ctrl+Option+H on macOS: `deleteWordBackward`
 
 ### Commands
 
