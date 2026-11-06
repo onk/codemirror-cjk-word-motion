@@ -31,7 +31,7 @@ jobs:
             echo "::error::$TAG already exists. Update the version in package.json first."
             exit 1
           fi
-      - run: npm publish
+      - run: pnpm publish
       - name: Tag the published commit
         env:
           VERSION: ${{ steps.version.outputs.version }}
