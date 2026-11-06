@@ -1,6 +1,6 @@
 {
   "name": "@onk/codemirror-cjk-word-motion",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "CodeMirror commands to move and delete by word in CJK text",
   "exports": "./dist/index.js",
   "files": [
