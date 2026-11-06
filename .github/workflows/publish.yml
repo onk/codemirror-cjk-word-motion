@@ -1,0 +1,43 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # to push the tag
+      id-token: write # for trusted publishing to npm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+        with:
+          runtime: node@26
+          cache: true
+          require-lockfile: true
+      - id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Check that the version is not tagged yet
+        env:
+          TAG: v${{ steps.version.outputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG"; then
+            echo "::error::$TAG already exists. Update the version in package.json first."
+            exit 1
+          fi
+      - run: npm publish
+      - name: Tag the published commit
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -a "v$VERSION" -m "$VERSION"
+          git push "https://x-access-token:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git" "v$VERSION"
